@@ -2,14 +2,22 @@ buildscript {
 	ext {
 		kotlinVersion = '1.2.41'
 		springBootVersion = '2.0.2.RELEASE'
+		postgresDriverVersion = '42.1.4'
+		jooqVersion = '3.9.5'
+		jooqCodeGenVersion = '2.0.9'
 	}
 	repositories {
 		mavenCentral()
+		maven {
+			url "https://plugins.gradle.org/m2/"
+		}
 	}
 	dependencies {
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
 		classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
 		classpath("org.jetbrains.kotlin:kotlin-allopen:${kotlinVersion}")
+		classpath "org.postgresql:postgresql:${postgresDriverVersion}"
+		classpath "nu.studer:gradle-jooq-plugin:${jooqCodeGenVersion}"
 	}
 }
 
@@ -18,6 +26,7 @@ apply plugin: 'kotlin-spring'
 apply plugin: 'eclipse'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
+apply plugin: 'nu.studer.jooq'
 
 group = 'com.jooq.example'
 version = '0.0.1-SNAPSHOT'
@@ -46,5 +55,49 @@ dependencies {
 	compile('com.fasterxml.jackson.module:jackson-module-kotlin')
 	compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	compile("org.jetbrains.kotlin:kotlin-reflect")
+	compile "org.jooq:jooq:$jooqVersion"
+	jooqRuntime "org.postgresql:postgresql:${postgresDriverVersion}"
 	testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+jooq {
+
+	version = "${jooqVersion}"
+	app(sourceSets.main) {
+		jdbc {
+			driver = 'org.postgresql.Driver'
+			url = 'jdbc:postgresql://localhost:5432/app'
+			user = 'app'
+			password = 'app'
+			schema = 'public'
+		}
+		generator {
+			name = 'org.jooq.util.DefaultGenerator'
+			strategy {
+				name = 'org.jooq.util.DefaultGeneratorStrategy'
+			}
+			database {
+				name = 'org.jooq.util.postgres.PostgresDatabase'
+				inputSchema = 'public'
+			}
+			generate {
+				relations = true
+				deprecated = false
+				records = true
+				daos = false
+				immutablePojos = true
+				fluentSetters = true
+				javaTimeTypes = false // java8 time api
+
+				// requires jpa
+				jpaAnnotations = false
+				validationAnnotations = false
+				springAnnotations = false
+			}
+			target {
+				packageName = 'com.example.db'
+				directory = 'src/main/generated/java'
+			}
+		}
+	}
 }
